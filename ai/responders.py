@@ -280,20 +280,13 @@ def detect_duplicate(text, user_info, user_info2):
 
 def query_model(prompt, model_name="gemini-1.5-flash"):
     api_key = os.getenv("GEMINI_API_KEY")
-    print("API KEY EXISTS:", bool(api_key))
-
-    if not api_key:
-        print("ERROR: GEMINI_API_KEY not found")
-        return "عذرًا، حدث خطأ في إعدادات السيرفر."
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
 
     payload = {
         "contents": [
             {
-                "parts": [
-                    {"text": prompt}
-                ]
+                "parts": [{"text": prompt}]
             }
         ]
     }
@@ -302,15 +295,27 @@ def query_model(prompt, model_name="gemini-1.5-flash"):
         response = requests.post(url, json=payload, timeout=60)
         data = response.json()
 
-        print("GEMINI RAW:", data)
+        print("🔥 GEMINI RAW RESPONSE:", data)
 
-        try:
-         return data["candidates"][0]["content"]["parts"][0]["text"]
-        except Exception as e:
-         print("BAD GEMINI RESPONSE:", data)
-         print("PARSE ERROR:", e)
-        return "عذرًا، حدث خطأ داخلي أثناء تجهيز الرد."
+        # 🔴 1. error handling
+        if "error" in data:
+            print("GEMINI ERROR:", data["error"])
+            return "عذرًا، حدث خطأ في النموذج."
+
+        # 🔴 2. safety block
+        if "promptFeedback" in data:
+            print("BLOCKED:", data["promptFeedback"])
+            return "عذرًا، لم أتمكن من معالجة الطلب."
+
+        # 🔴 3. empty response
+        if not data.get("candidates"):
+            print("NO CANDIDATES:", data)
+            return "عذرًا، لم يتم توليد رد."
+
+        # 🔴 4. safe extraction
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+
     except Exception as e:
-        print("GEMINI ERROR:", e)
-        return "عذرًا، حدث خطأ في الاتصال بنموذج اللغة."
+        print("GEMINI EXCEPTION:", e)
+        return "عذرًا، حدث خطأ في الاتصال."
         
