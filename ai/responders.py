@@ -1,7 +1,6 @@
 from ai.Prompts import DUPLICATE_DETECTOR,CLASSIFYING_IMPORTANT,RESUME_IMPORTANT,USER_INFO_IMPORTANT,CONVERSATION_RULES,IMAGE_PROMPT, TITLE_GENERATION_PROMPT, SYSTEM_IDENTITY, SYSTEM_BEHAVIOR, SYSTEM_SAFETY, SELF_HARM_GUIDED_PROMPT,EMERGENCY_GUIDED_PROMPT, REFINER_BEHAVIOR,REFINER_IDENTITY,REFINER_RULES,REFINER_SAFETY
 import requests
-
-OLLAMA_URL = "http://localhost:11434/api/generate"
+import os
 
 
 def _language_instruction(language):
@@ -203,19 +202,42 @@ def title_creator(text, language=None):
 
 def Image_captioner(image_base64):
 
-    response = requests.post(
-        OLLAMA_URL,
-        json={
-            "model": "qwen2.5vl:latest",
-            "prompt":  IMAGE_PROMPT,
-            "images": [image_base64],
-            "stream": False
-        }
-    )
+    api_key = os.getenv("GEMINI_API_KEY")
 
-    print(response.json())
+    if not api_key:
+        return "No API key"
 
-    return response.json().get("response")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "text": IMAGE_PROMPT
+                    },
+                    {
+                        "inline_data": {
+                            "mime_type": "image/jpeg",
+                            "data": image_base64
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+
+    try:
+        response = requests.post(url, json=payload, timeout=60)
+        data = response.json()
+
+        print("GEMINI IMAGE RESPONSE:", data)
+
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+
+    except Exception as e:
+        print("IMAGE ERROR:", e)
+        return "Image analysis failed"
 
 def classify_user_message(text):
     full_prompt = f"""
@@ -256,26 +278,33 @@ def detect_duplicate(text, user_info, user_info2):
 
     return query_model(full_prompt, model_name="qwen2:latest")
 
-def query_model(full_prompt, model_name, timeout=120, images=None):
+def query_model(prompt, model_name="gemini-1.5-flash"):
+    api_key = os.getenv("GEMINI_API_KEY")
+
+    if not api_key:
+        print("ERROR: GEMINI_API_KEY not found")
+        return "عذرًا، حدث خطأ في إعدادات السيرفر."
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
 
     payload = {
-        "model": model_name,
-        "prompt": full_prompt,
-        "stream": False
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt}
+                ]
+            }
+        ]
     }
 
-    if images:
-        payload["images"] = images
+    try:
+        response = requests.post(url, json=payload, timeout=60)
+        data = response.json()
 
-    response = requests.post(
-        OLLAMA_URL,
-        json=payload,
-        timeout=timeout
-    )
+        print("GEMINI RAW:", data)
 
-    response.raise_for_status()
+        return data["candidates"][0]["content"]["parts"][0]["text"]
 
-    result = response.json()
-
-    return result.get("response", "")
-    
+    except Exception as e:
+        print("GEMINI ERROR:", e)
+        return "عذرًا، حدث خطأ داخلي أثناء تجهيز الرد."
