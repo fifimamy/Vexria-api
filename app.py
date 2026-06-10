@@ -166,6 +166,7 @@ def get_chats_display():
 
 @app.route("/chat", methods=["POST"])
 def chat():
+    print("🔥 CHAT ENDPOINT HIT")
 
     try:
 
