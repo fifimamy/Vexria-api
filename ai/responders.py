@@ -282,7 +282,7 @@ def query_model(prompt, model_name="gemini-1.5-flash"):
     api_key = os.getenv("GEMINI_API_KEY")
 
     if not api_key:
-        return ""
+        return "ERROR: Missing API key"
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
 
@@ -298,11 +298,16 @@ def query_model(prompt, model_name="gemini-1.5-flash"):
         response = requests.post(url, json=payload, timeout=60)
         data = response.json()
 
-        # حماية من الأخطاء
+        print("GEMINI RAW RESPONSE:", data)  # مهم جداً للتصحيح
+
+        # ⛔ لا تسكت على الخطأ
         if "candidates" not in data:
-            return ""
+            return f"ERROR_NO_CANDIDATES: {data}"
+
+        if not data["candidates"]:
+            return "ERROR_EMPTY_CANDIDATES"
 
         return data["candidates"][0]["content"]["parts"][0].get("text", "")
 
     except Exception as e:
-        return ""
+        return f"ERROR_EXCEPTION: {str(e)}"
