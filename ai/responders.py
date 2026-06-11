@@ -284,7 +284,7 @@ def query_model(prompt, model_name="gemini-1.5-flash"):
     if not api_key:
         return "ERROR: Missing API key"
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1/models/{model_name}:generateContent?key={api_key}"
 
     payload = {
         "contents": [
