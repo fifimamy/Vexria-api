@@ -14,8 +14,10 @@ from ai.semantic_analyzer import (
 from system.firebase import load_user, load_all_users, update_user
 
 
-print("STARTUP TEST 111111")
-print("ENV =", os.getenv("GEMINI_API_KEY"))
+print("================================")
+print("APP.PY IS RUNNING")
+print("GEMINI =", os.getenv("GEMINI_API_KEY"))
+print("================================")
 
 
 def safe_print(*args, **kwargs):
