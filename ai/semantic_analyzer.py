@@ -13,8 +13,6 @@ from system.medical_profile import user_information
 from system.firebase import load_firebase_user, save_firebase_user, save_ai_evaluation_to_firebase
 
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-
 
 def _safe_json_loads(raw, default=None):
     if raw is None:
@@ -641,73 +639,23 @@ def format_chat_for_display(chat_history, max_messages=6):
 def analyze_user_semantics(text, max_retries=3, default_risk=0):
     full_prompt = USER_ANALYSING_PROMPT_1 + "\n\nUser message:\n" + (text or "")
 
-    for attempt in range(max_retries):
-        try:
-            response = requests.post(
-                OLLAMA_URL,
-                json={
-                    "model": "qwen2:1.5b-instruct",
-                    "prompt": full_prompt,
-                    "stream": False
-                },
-                timeout=20
-            )
-            response.raise_for_status()
-            data = response.json()
-            ai_reply = data.get("response", "")
-
-            parsed = _safe_json_loads(ai_reply, {})
-            risk = parsed.get("risk", default_risk) if isinstance(parsed, dict) else default_risk
-
-            if isinstance(risk, str) and risk.isdigit():
-                risk = int(risk)
-
-            if risk in [0, 1, 2, 3]:
-                return risk
-            print(f"Attempt {attempt+1}: Invalid risk '{risk}', retrying...")
-        except requests.RequestException as e:
-            print(f"Attempt {attempt+1}: Request error: {e}")
-        except Exception as e:
-            print(f"Attempt {attempt+1}: Unexpected error: {e}")
-
-    print(f"No valid risk obtained after {max_retries} attempts. Using default risk {default_risk}.")
-    return default_risk
+    result = query_model(full_prompt)
+    try:
+        return int(result.strip())
+    except:
+        return default_risk
     
 def analyze_user_samantics2(text, max_retries=3, default_type=0):
 
     full_prompt = USER_ANALYSING_PROMPT_2 + "\n\nUser message:\n" + (text or "")
 
-    for attempt in range(max_retries):
-        try:
-            response = requests.post(
-                OLLAMA_URL,
-                json={
-                    "model": "qwen2:1.5b-instruct",
-                    "prompt": full_prompt,
-                    "stream": False
-                },
-                timeout=20
-            )
-            response.raise_for_status()
-            data = response.json()
-            ai_reply = data.get("response", "")
+    result = query_model(full_prompt)
+    try:
+        return int(result.strip())
+    except:
+        return default_type
 
-            parsed = _safe_json_loads(ai_reply, {})
-            msg_type = parsed.get("type", default_type) if isinstance(parsed, dict) else default_type
 
-            if isinstance(msg_type, str) and msg_type.isdigit():
-                msg_type = int(msg_type)
-
-            if msg_type in range(8):
-                return msg_type
-            print(f"Attempt {attempt+1}: Invalid type '{msg_type}', retrying...")
-        except requests.RequestException as e:
-            print(f"Attempt {attempt+1}: Request error: {e}")
-        except Exception as e:
-            print(f"Attempt {attempt+1}: Unexpected error: {e}")
-
-    print(f"No valid type obtained after {max_retries} attempts. Using default type {default_type}.")
-    return default_type
 
 def analyze_ai_response(text, answer):
 
@@ -724,56 +672,18 @@ def analyze_ai_response(text, answer):
      Decide only if the AI reply is safe, relevant, and directly answers the user's message. Respond with 'true' if it violates rules or is inappropriate, 'false' otherwise.
      """
 
-   try:
-       response = requests.post(
-              OLLAMA_URL,
-              json={
-                "model": "qwen2:1.5b-instruct",
-                "prompt": full_prompt,
-                "stream": False
-              },
-              timeout=20
-       )
-       response.raise_for_status()
-       try:
-           return response.json()
-       except ValueError:
-           print("AI answer response was not valid JSON")
-           return None
-   except requests.RequestException as e:
-         print("Error:", e)
-         return None
-   except Exception as e:
-         print("Unexpected error in analyze_ai_response:", e)
-         return None
-   
+   return query_model(full_prompt)
+      
 def classify_ai_response(text):
 
-   full_prompt = PROMPT_AI_CLASSIFICATION + "\n\nAI response:\n" + (text or "")
+    full_prompt = PROMPT_AI_CLASSIFICATION + "\n\nAI response:\n" + (text or "")
 
-   try:
-       response = requests.post(
-              OLLAMA_URL,
-              json={
-                "model": "qwen2:1.5b-instruct",
-                "prompt": full_prompt,
-                "stream": False
-              },
-              timeout=20
-       )
-       response.raise_for_status()
-
-       data = response.json()
-       raw = data.get("response", "")
-
-       parsed = _safe_json_loads(raw, {})
-       if isinstance(parsed, dict):
-           return parsed.get("class")
-       return None
-
-   except Exception as e:
-         print("Error:", e)
-         return None
+    result = query_model(full_prompt)
+    try:
+        import json
+        return json.loads(result)
+    except:
+        return None
 
 def ai_system(text, user_classification, doctor_type, chat_history, user_data, image_base64=None, language=None):
     reason = user_classification.get("reason") if isinstance(user_classification, dict) else None
@@ -898,32 +808,12 @@ def ai_for_illegal_cases(text, ai_reply, ai_classification,user_data):
 def Performance_evaluation_ai(user_message, ai_reply):
     full_prompt = _build_evaluation_prompt(user_message, ai_reply)
 
+    result = query_model(full_prompt)
+
     try:
-        response = requests.post(
-            OLLAMA_URL,
-            json={
-                "model": "qwen2:1.5b-instruct",
-                "prompt": full_prompt,
-                "stream": False
-            },
-            timeout=20
-        )
-
-        response.raise_for_status()
-
-        try:
-            result = response.json()
-            evaluation_text = result.get("response", "").strip()
-            return evaluation_text
-        except ValueError:
-            print("Performance evaluation response was not valid JSON")
-            return None
-
-    except requests.RequestException as e:
-        print("Error:", e)
-        return None
-    except Exception as e:
-        print("Unexpected error in Performance_evaluation_ai:", e)
+        import json
+        return json.loads(result)
+    except:
         return None
    
 def title_creation(text, language=None):
@@ -1079,3 +969,30 @@ def capture_user_medical_summary(user_id, text, user_data=None):
         "pending_notifications": pending,
     }
     
+
+def query_model(prompt, model_name="gemini-1.5-flash"):
+    api_key = os.getenv("GEMINI_API_KEY")
+
+    if not api_key:
+        return "NO API KEY"
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt}
+                ]
+            }
+        ]
+    }
+
+    try:
+        response = requests.post(url, json=payload, timeout=60)
+        data = response.json()
+
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+
+    except Exception as e:
+        return f"ERROR: {str(e)}"

@@ -279,28 +279,30 @@ def detect_duplicate(text, user_info, user_info2):
     return query_model(full_prompt)
 
 def query_model(prompt, model_name="gemini-1.5-flash"):
-    import os
-    import requests
-
     api_key = os.getenv("GEMINI_API_KEY")
 
     if not api_key:
-        return "NO API KEY"
+        return ""
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
 
     payload = {
         "contents": [
             {
-                "parts": [
-                    {
-                        "text": "Say only: Hello"
-                    }
-                ]
+                "parts": [{"text": prompt}]
             }
         ]
     }
 
-    response = requests.post(url, json=payload, timeout=60)
+    try:
+        response = requests.post(url, json=payload, timeout=60)
+        data = response.json()
 
-    return response.text
+        # حماية من الأخطاء
+        if "candidates" not in data:
+            return ""
+
+        return data["candidates"][0]["content"]["parts"][0].get("text", "")
+
+    except Exception as e:
+        return ""
