@@ -13,12 +13,9 @@ from ai.semantic_analyzer import (
 )
 from system.firebase import load_user, load_all_users, update_user
 
-key = os.getenv("GEMINI_API_KEY")
 
-print("KEY EXISTS:", key is not None)
-
-if key:
-    print("KEY LENGTH:", len(key))
+print("STARTUP TEST 111111")
+print("ENV =", os.getenv("GEMINI_API_KEY"))
 
 
 def safe_print(*args, **kwargs):
