@@ -13,6 +13,8 @@ from ai.semantic_analyzer import (
 )
 from system.firebase import load_user, load_all_users, update_user
 
+print("KEY EXISTS:", bool(os.getenv("GEMINI_API_KEY")))
+
 
 def safe_print(*args, **kwargs):
     try:
