@@ -1,4 +1,5 @@
 from datetime import datetime
+import traceback
 from flask import Flask, request, jsonify
 import json
 import os
@@ -14,6 +15,7 @@ from ai.semantic_analyzer import (
     finalize_summary_item,
 )
 from system.firebase import load_user, load_all_users, update_user
+
 
 
 
@@ -178,6 +180,7 @@ def get_chats_display():
 
 @app.route("/chat", methods=["POST"])
 def chat():
+    
     print("🔥 CHAT ENDPOINT HIT")
 
     try:
@@ -254,12 +257,14 @@ def chat():
 
     except Exception as e:
 
-        print("CHAT ERROR:", e)
+     print("========== ERROR ==========")
+     traceback.print_exc()
+     print("===========================")
 
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+     return jsonify({
+        "success": False,
+        "error": str(e)
+     }), 500
     
 
 
