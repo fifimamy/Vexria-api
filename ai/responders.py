@@ -309,4 +309,10 @@ def query_model(prompt):
 
     data = response.json()
 
+    print("OPENROUTER RESPONSE:")
+    print(data)
+
+    if "choices" not in data:
+        return f"OPENROUTER_ERROR: {data}"
+
     return data["choices"][0]["message"]["content"]
