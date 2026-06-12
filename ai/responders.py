@@ -285,13 +285,16 @@ def query_model(prompt):
 
     api_key = os.getenv("OPENROUTER_API_KEY")
 
+    if not api_key:
+        return "ERROR: OPENROUTER_API_KEY not found"
+
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
 
     payload = {
-        "model": "meta-llama/llama-3.3-8b-instruct:free",
+        "model": "google/gemma-3-12b-it:free",
         "messages": [
             {
                 "role": "user",
@@ -300,19 +303,25 @@ def query_model(prompt):
         ]
     }
 
-    response = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers=headers,
-        json=payload,
-        timeout=60
-    )
+    try:
 
-    data = response.json()
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=60
+        )
 
-    print("OPENROUTER RESPONSE:")
-    print(data)
+        data = response.json()
 
-    if "choices" not in data:
-        return f"OPENROUTER_ERROR: {data}"
+        print("OPENROUTER RESPONSE:")
+        print(data)
 
-    return data["choices"][0]["message"]["content"]
+        if "choices" not in data:
+            return f"OPENROUTER_ERROR: {data}"
+
+        return data["choices"][0]["message"]["content"]
+
+    except Exception as e:
+        print("OPENROUTER EXCEPTION:", str(e))
+        return f"OPENROUTER_EXCEPTION: {str(e)}"
