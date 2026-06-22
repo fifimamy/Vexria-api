@@ -4,6 +4,19 @@ from ai.Prompts import DUPLICATE_DETECTOR,CLASSIFYING_IMPORTANT,RESUME_IMPORTANT
 import requests
 import os
 
+TEXT_MODELS = [
+    "qwen/qwen3-next-80b-a3b-instruct:free",
+    "openai/gpt-oss-120b:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "openai/gpt-oss-20b:free"
+]
+
+IMAGE_MODELS = [
+    "openai/gpt-oss-120b:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "qwen/qwen3-next-80b-a3b-instruct:free"
+]
+
 
 def _language_instruction(language):
     if not language:
@@ -202,44 +215,80 @@ def title_creator(text, language=None):
 
     return query_model(full_prompt)
 
-def Image_captioner(image_base64):
+def image_captioner(image_base64):
 
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = os.getenv("OPENROUTER_API_KEY")
 
     if not api_key:
-        return "No API key"
+        return "ERROR: OPENROUTER_API_KEY not found"
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro-vision:generateContent?key={api_key}"
-
-    payload = {
-        "contents": [
-            {
-                "parts": [
-                    {
-                        "text": IMAGE_PROMPT
-                    },
-                    {
-                        "inline_data": {
-                            "mime_type": "image/jpeg",
-                            "data": image_base64
-                        }
-                    }
-                ]
-            }
-        ]
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
     }
 
-    try:
-        response = requests.post(url, json=payload, timeout=60)
-        data = response.json()
+    last_error = None
 
-        print("GEMINI IMAGE RESPONSE:", data)
+    for model in IMAGE_MODELS:
 
-        return data["candidates"][0]["content"]["parts"][0]["text"]
+        payload = {
+            "model": model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": IMAGE_PROMPT
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{image_base64}"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
 
-    except Exception as e:
-        print("IMAGE ERROR:", e)
-        return "Image analysis failed"
+        try:
+
+            print(f"\nTrying image model: {model}")
+
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=120
+            )
+
+            data = response.json()
+
+            print("IMAGE RESPONSE:")
+            print(data)
+
+            if "choices" in data:
+                print(f"IMAGE SUCCESS USING: {model}")
+
+                return data["choices"][0]["message"]["content"]
+
+            error_code = data.get("error", {}).get("code")
+
+            last_error = data
+
+            if error_code in [429, 500, 502, 503, 504]:
+                print(f"Image model failed ({error_code}), switching...")
+                continue
+
+        except Exception as e:
+
+            print(f"Image exception with {model}: {e}")
+
+            last_error = str(e)
+            continue
+
+    return f"ALL_IMAGE_MODELS_FAILED: {last_error}"
 
 def classify_user_message(text):
     full_prompt = f"""
@@ -293,35 +342,54 @@ def query_model(prompt):
         "Content-Type": "application/json"
     }
 
-    payload = {
-      "model": "google/gemma-4-31b-it:free",
-      "messages": [
-          {
-             "role": "user",
-             "content": prompt
-          }
-        ]
-    }
+    last_error = None
 
-    try:
+    for model in TEXT_MODELS:
 
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json=payload,
-            timeout=60
-        )
+        payload = {
+            "model": model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        }
 
-        data = response.json()
+        try:
 
-        print("OPENROUTER RESPONSE:")
-        print(data)
+            print(f"\nTrying text model: {model}")
 
-        if "choices" not in data:
-            return f"OPENROUTER_ERROR: {data}"
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=90
+            )
 
-        return data["choices"][0]["message"]["content"]
+            data = response.json()
 
-    except Exception as e:
-        print("OPENROUTER EXCEPTION:", str(e))
-        return f"OPENROUTER_EXCEPTION: {str(e)}"
+            print("OPENROUTER RESPONSE:")
+            print(data)
+
+            if "choices" in data:
+                print(f"SUCCESS USING: {model}")
+
+                return data["choices"][0]["message"]["content"]
+
+            error_code = data.get("error", {}).get("code")
+
+            last_error = data
+
+            if error_code in [429, 500, 502, 503, 504]:
+                print(f"Model failed ({error_code}), switching...")
+                continue
+
+        except Exception as e:
+
+            print(f"Exception with {model}: {e}")
+
+            last_error = str(e)
+            continue
+
+    return f"ALL_TEXT_MODELS_FAILED: {last_error}"
