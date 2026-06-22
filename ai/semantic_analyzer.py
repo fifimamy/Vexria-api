@@ -8,7 +8,7 @@ import builtins
 from ai.doctor_profiles import get_doctor_profile
 from ai.notification_templates import build_notification_for_item
 from ai.Prompts import USER_ANALYSING_PROMPT_1 , USER_ANALYSING_PROMPT_2,AI_ANSWER_PROMPT,PROMPT_AI_CLASSIFICATION,EVALUATION_PROMPT
-from ai.responders import detect_duplicate,classify_resume,resume_message,classify_user_message,Image_captioner, refine_response, generate_emergency_response, generate_self_harm_response, generate_standard_response, title_creator , query_model
+from ai.responders import detect_duplicate,classify_resume,resume_message,classify_user_message,image_captioner, refine_response, generate_emergency_response, generate_self_harm_response, generate_standard_response, title_creator , query_model
 from system.medical_profile import user_information
 from system.firebase import load_firebase_user, save_firebase_user, save_ai_evaluation_to_firebase
 
@@ -861,7 +861,7 @@ def analyze_image(image_base64, mock=False):
     try:
         print("BASE64 LENGTH:", len(image_base64))
 
-        analysis = Image_captioner(image_base64)
+        analysis = image_captioner(image_base64)
 
         print("IMAGE ANALYSIS RESULT:", repr(analysis))
 
