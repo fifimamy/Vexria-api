@@ -8,10 +8,8 @@ from ai.semantic_analyzer import ai_system
 from system.storage import append_chat_exchange, store_user_data, stor_ai_evaluation
 from ai.semantic_analyzer import ai_for_illegal_cases
 from ai.ai_filter import evaluation
-import json
 
-with open("user_data.json","r",encoding= "utf-8") as f:
- user_data = json.load(f)
+user_data = {}
 
 # with open("conversation.json", "r", encoding="utf-8") as f:
 #  history = json.load(f)
